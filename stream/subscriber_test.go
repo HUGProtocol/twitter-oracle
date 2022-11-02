@@ -25,6 +25,20 @@ func TestGetRule(t *testing.T) {
 	fmt.Println(rules)
 }
 
+func TestDeleteRule(t *testing.T) {
+	sub := Subscriber{
+		conversationHandler: make(map[string]Handler),
+		BeaverToken:         tokenStr,
+		client:              nil,
+		stream:              nil,
+	}
+	sub.newClient()
+	err := sub.DeleteRules(context.Background(), []string{"1545290390944722945", "1546429906975727617"})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestAddRule(t *testing.T) {
 	sub := Subscriber{
 		conversationHandler: make(map[string]Handler),
@@ -54,11 +68,11 @@ func TestStartStream(t *testing.T) {
 		BeaverToken:         tokenStr,
 		client:              nil,
 		stream:              nil,
+		defaultHandler:      DummyHandler,
 	}
 	sub.newClient()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
-	sub.AddConversation("1546432022280691712", DummyHandler)
 	err := sub.Start(ctx)
 	if err != nil {
 		t.Fatal(err)
