@@ -26,6 +26,7 @@ type Subscriber struct {
 	client              *twitter.Client
 	stream              *twitter.TweetStream
 	db                  *db.DBService
+	defaultHandler      Handler
 }
 
 func Init(db *db.DBService) (*Subscriber, error) {
@@ -53,6 +54,10 @@ func (s *Subscriber) newClient() {
 		Client: http.DefaultClient,
 		Host:   "https://api.twitter.com",
 	}
+}
+
+func (s *Subscriber) AddDefaultHanler(handler Handler) {
+	s.defaultHandler = handler
 }
 
 func (s *Subscriber) AddConversation(conversationFilter string, handler Handler) {
@@ -106,8 +111,8 @@ func (s *Subscriber) DeleteRules(ctx context.Context, ids []string) error {
 }
 
 func (s *Subscriber) reconnect(ctx context.Context) error {
-	ticker := time.NewTicker(time.Minute * 2)
-	timeout := time.NewTimer(time.Minute * 30)
+	ticker := time.NewTicker(time.Minute * 5)
+	timeout := time.NewTimer(time.Minute * 60)
 	var err error
 	for {
 		select {
@@ -168,10 +173,12 @@ func (s *Subscriber) Start(ctx context.Context) error {
 		case <-ticker.C:
 			if s.stream.Connection() == false {
 				fmt.Printf("connection lost %v\n", time.Now())
+				s.stream.Close()
 				reconnectErr := s.reconnect(ctx)
 				if reconnectErr != nil {
 					return reconnectErr
 				}
+				fmt.Println("reconnected", time.Now())
 			}
 		}
 	}
@@ -192,6 +199,7 @@ func (s *Subscriber) handleTweetMessage(tweetMsg *twitter.TweetMessage) error {
 		if tweet == nil {
 			continue
 		}
+		//handle certain conversation
 		for conversation, handler := range s.conversationHandler {
 			if tweet.ConversationID == conversation {
 				authorId := tweet.AuthorID
@@ -212,6 +220,31 @@ func (s *Subscriber) handleTweetMessage(tweetMsg *twitter.TweetMessage) error {
 				}
 			}
 		}
+
+		if s.defaultHandler != nil {
+			authorId := tweet.AuthorID
+			authorName, ok := userIdNameMap[authorId]
+			if !ok {
+				//todo:handle stream message without author name
+				fmt.Println("failed to get author name, author id:", authorId)
+				continue
+			}
+			createTime, err := time.Parse(time.RFC3339, tweet.CreatedAt)
+			if err != nil {
+				createTime = time.Now()
+			}
+			e := s.defaultHandler(s.db, tweet.ConversationID, authorId, authorName, createTime, tweet.Text)
+			if e != nil {
+				//todo:handle handler error
+				fmt.Println("default handle error", e, tweet)
+				continue
+			}
+		}
 	}
 	return nil
+}
+
+func LoadThoughtHandler(db *db.DBService, conversation string, authorId string, authorName string, createTime time.Time, text string) error {
+	fmt.Println("load thought", authorName, createTime)
+	return db.PutThought(authorName, text, conversation)
 }

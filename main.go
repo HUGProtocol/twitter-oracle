@@ -10,8 +10,6 @@ import (
 	"twitter_oracle/common"
 	"twitter_oracle/db"
 	"twitter_oracle/log"
-	"twitter_oracle/query"
-	"twitter_oracle/restful"
 	"twitter_oracle/stream"
 )
 
@@ -35,10 +33,10 @@ var (
 		Usage: "restful rpc port",
 		Value: "8546",
 	}
-	dbIPFlag = cli.StringFlag{
-		Name:  "db",
-		Usage: "db ip",
-	}
+	//dbIPFlag = cli.StringFlag{
+	//	Name:  "db",
+	//	Usage: "db ip",
+	//}
 	beaverFlag = cli.StringFlag{
 		Name:  "beaver",
 		Usage: "auth beaver token",
@@ -50,7 +48,6 @@ var commandStart = cli.Command{
 	Usage: "start twitter oracle",
 	Flags: []cli.Flag{
 		portFlag,
-		dbIPFlag,
 		beaverFlag,
 	},
 	Action: Start,
@@ -72,20 +69,14 @@ func main() {
 	}
 }
 
-func Start(ctx cli.Context) {
+func Start(ctx *cli.Context) {
 	//load setups
-	port := ""
-	if ctx.IsSet(portFlag.Name) {
-		port = ctx.String(portFlag.Name)
-	} else {
-		panic("port unset")
-	}
-	dbIP := ""
-	if ctx.IsSet(dbIPFlag.Name) {
-		dbIP = ctx.String(dbIPFlag.Name)
-	} else {
-		panic("db ip unset")
-	}
+	//port := ""
+	//if ctx.IsSet(portFlag.Name) {
+	//	port = ctx.String(portFlag.Name)
+	//} else {
+	//	panic("port unset")
+	//}
 
 	if ctx.IsSet(beaverFlag.Name) {
 		common.BeaverToken = ctx.String(beaverFlag.Name)
@@ -94,7 +85,7 @@ func Start(ctx cli.Context) {
 	}
 
 	//init and start services
-	dbt, err := db.Init(common.DBPass, dbIP)
+	dbt, err := db.Init()
 	if err != nil {
 		panic(err)
 	}
@@ -104,23 +95,19 @@ func Start(ctx cli.Context) {
 	if err != nil {
 		panic(err)
 	}
+	sub.AddDefaultHanler(stream.LoadThoughtHandler)
 	err = sub.Start(context.Background())
 	if err != nil {
 		panic(err)
 	}
 	log.Info("stream subscriber started")
 
-	poller := query.Init(dbt, common.DefaultPollDuration)
-	poller.Start()
-	log.Info("poller started", "interval", common.DefaultPollDuration)
-
-	restS := restful.InitRestService(port, dbt)
-	err = restS.Start()
-	if err != nil {
-		panic(err)
-	}
+	//restS := restful.InitRestService(port, dbt)
+	//err = restS.Start()
+	//if err != nil {
+	//	panic(err)
+	//}
 	log.Info("rest api started")
-
 	waitToExit()
 }
 
