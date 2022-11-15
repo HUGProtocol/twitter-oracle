@@ -25,7 +25,7 @@ func Init() (*DBService, error) {
 	}, nil
 }
 
-func (db *DBService) PutThought(author, text, conversationId string) error {
+func (db *DBService) PutThought(author, content, sourceUrl, tips string) error {
 	//get user
 	getUserSql := "select address from users where twitter=$1"
 	address := ""
@@ -36,10 +36,9 @@ func (db *DBService) PutThought(author, text, conversationId string) error {
 		return err
 	}
 	//insert thought
-	putThoughtSql := "insert into thoughts(content, address, source_url, submit_state) values ($1, $2, $3, $4)"
-	//https://twitter.com/ninox2022/status/1587630498012332032
-	source_url := fmt.Sprintf("https://twitter.com/%s/status/%s", author, conversationId)
-	_, err = db.pool.Exec(ctx, putThoughtSql, text, address, source_url, "save")
+	putThoughtSql := "insert into thoughts(content, address, source_url, submit_state, tips) values ($1, $2, $3, $4, $5)"
+	//sourceUrl example: https://twitter.com/ninox2022/status/1587630498012332032
+	_, err = db.pool.Exec(ctx, putThoughtSql, content, address, sourceUrl, "save", tips)
 	return err
 }
 

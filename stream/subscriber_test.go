@@ -2,13 +2,16 @@ package stream
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/g8rswimmer/go-twitter/v2"
+	"os"
 	"testing"
 	"time"
 	"twitter_oracle/db"
 )
 
-var tokenStr = "AAAAAAAAAAAAAAAAAAAAAK%2FqeQEAAAAAx0whFAoIkeSsxfoXKdTN0SQn93w%3DI0snjdgGv0VEwbn5q3xLSiY7MAuU13jbxo3Q0RV7pbrtnv0sfB"
+var tokenStr = os.Getenv("TW_BEAVER")
 
 func TestGetRule(t *testing.T) {
 	sub := Subscriber{
@@ -56,9 +59,9 @@ func TestAddRule(t *testing.T) {
 	fmt.Println(rules)
 }
 
-func DummyHandler(db *db.DBService, conversation string, authorId string, authorName string, createTime time.Time, text string) error {
-	fmt.Printf("conversation:%v\nauthor id:%v\nauthor name:%v\ncreate time:%v\ntext:%v\n",
-		conversation, authorId, authorName, createTime.String(), text)
+func DummyHandler(db *db.DBService, id string, conversation string, authorId string, authorName string, createTime time.Time, text string) error {
+	fmt.Printf("id:%v\nconversation:%v\nauthor id:%v\nauthor name:%v\ncreate time:%v\ntext:%v\n",
+		id, conversation, authorId, authorName, createTime.String(), text)
 	return nil
 }
 
@@ -77,4 +80,34 @@ func TestStartStream(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestGetTweetConversation(t *testing.T) {
+	sub := Subscriber{
+		conversationHandler: make(map[string]Handler),
+		BeaverToken:         tokenStr,
+		client:              nil,
+		stream:              nil,
+		defaultHandler:      DummyHandler,
+	}
+	sub.newClient()
+	opts := twitter.TweetLookupOpts{
+		Expansions:  []twitter.Expansion{twitter.ExpansionAuthorID},
+		TweetFields: []twitter.TweetField{twitter.TweetFieldCreatedAt, twitter.TweetFieldConversationID},
+	}
+	ids := []string{"1592228299337760768"}
+	tweetResponse, err := sub.client.TweetLookup(context.Background(), ids, opts)
+	if err != nil {
+		panic(err)
+	}
+	dictionaries := tweetResponse.Raw.TweetDictionaries()
+
+	enc, err := json.MarshalIndent(dictionaries, "", "    ")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(enc))
+
+	tweet := tweetResponse.Raw.Tweets[0]
+	DummyHandler(nil, tweet.ID, tweet.ConversationID, tweet.AuthorID, "mask", time.Now(), tweet.Text)
 }

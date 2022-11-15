@@ -7,15 +7,18 @@ import (
 	"fmt"
 	"github.com/g8rswimmer/go-twitter/v2"
 	"net/http"
+	"strings"
 	"time"
 	"twitter_oracle/common"
 	"twitter_oracle/db"
 )
 
-type Handler func(db *db.DBService, conversation string, authorId string, authorName string, createTime time.Time, text string) error
+var MAX_TIPS_LEN = 50
+
+type Handler func(db *db.DBService, id string, conversation string, authorId string, authorName string, createTime time.Time, text string) error
 
 //By Default add text as reply to conversation in db
-func DefaultHandler(db *db.DBService, conversation string, authorId string, authorName string, createTime time.Time, text string) error {
+func DefaultHandler(db *db.DBService, id string, conversation string, authorId string, authorName string, createTime time.Time, text string) error {
 	//todo:add as reply in db
 	return nil
 }
@@ -108,6 +111,22 @@ func (s *Subscriber) DeleteRules(ctx context.Context, ids []string) error {
 	}
 	_, err := s.client.TweetSearchStreamDeleteRuleByID(ctx, ruleIDs, true)
 	return err
+}
+
+func (s *Subscriber) GetTweetById(ctx context.Context, id string) (*twitter.TweetRaw, error) {
+	opts := twitter.TweetLookupOpts{
+		Expansions:  []twitter.Expansion{twitter.ExpansionAuthorID},
+		TweetFields: []twitter.TweetField{twitter.TweetFieldCreatedAt, twitter.TweetFieldConversationID},
+	}
+	ids := []string{id}
+	tweetResponse, err := s.client.TweetLookup(context.Background(), ids, opts)
+	if err != nil {
+		return nil, err
+	}
+	if tweetResponse.Raw == nil {
+		return nil, errors.New("response tweet raw nil")
+	}
+	return tweetResponse.Raw, nil
 }
 
 func (s *Subscriber) reconnect(ctx context.Context) error {
@@ -213,7 +232,7 @@ func (s *Subscriber) handleTweetMessage(tweetMsg *twitter.TweetMessage) error {
 				if err != nil {
 					createTime = time.Now()
 				}
-				e := handler(s.db, conversation, authorId, authorName, createTime, tweet.Text)
+				e := handler(s.db, tweet.ID, conversation, authorId, authorName, createTime, tweet.Text)
 				if e != nil {
 					//todo:handle handler error
 					continue
@@ -233,7 +252,7 @@ func (s *Subscriber) handleTweetMessage(tweetMsg *twitter.TweetMessage) error {
 			if err != nil {
 				createTime = time.Now()
 			}
-			e := s.defaultHandler(s.db, tweet.ConversationID, authorId, authorName, createTime, tweet.Text)
+			e := s.defaultHandler(s.db, tweet.ID, tweet.ConversationID, authorId, authorName, createTime, tweet.Text)
 			if e != nil {
 				//todo:handle handler error
 				fmt.Println("default handle error", e, tweet)
@@ -244,7 +263,40 @@ func (s *Subscriber) handleTweetMessage(tweetMsg *twitter.TweetMessage) error {
 	return nil
 }
 
-func LoadThoughtHandler(db *db.DBService, conversation string, authorId string, authorName string, createTime time.Time, text string) error {
+func (s *Subscriber) LoadThoughtHandler(db *db.DBService, id string, conversation string, authorId string, authorName string, createTime time.Time, text string) error {
 	fmt.Println("load thought", authorName, createTime)
-	return db.PutThought(authorName, text, conversation)
+	sourceUrl := ""
+	tips := text
+	if len(text) > MAX_TIPS_LEN {
+		sepList := strings.Split(text, " ")
+		summary := ""
+		for _, sep := range sepList {
+			summary = summary + sep
+			if len(summary) > MAX_TIPS_LEN {
+				summary = summary + " ..."
+				break
+			}
+		}
+	}
+	if id == conversation {
+		sourceUrl = fmt.Sprintf("https://twitter.com/%s/status/%s", authorName, conversation)
+	} else {
+		raw, err := s.GetTweetById(context.Background(), conversation)
+		if err != nil {
+			return err
+		}
+		userIdNameMap := make(map[string]string)
+		for _, user := range raw.Includes.Users {
+			if user == nil {
+				continue
+			}
+			userIdNameMap[user.ID] = user.UserName
+		}
+		if len(raw.Tweets) == 0 {
+			return errors.New("conversation tweet not found" + conversation)
+		}
+		conversationAuthor := userIdNameMap[raw.Tweets[0].AuthorID]
+		sourceUrl = fmt.Sprintf("https://twitter.com/%s/status/%s", conversationAuthor, conversation)
+	}
+	return db.PutThought(authorName, text, sourceUrl, tips)
 }

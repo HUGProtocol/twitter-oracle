@@ -33,10 +33,6 @@ var (
 		Usage: "restful rpc port",
 		Value: "8546",
 	}
-	//dbIPFlag = cli.StringFlag{
-	//	Name:  "db",
-	//	Usage: "db ip",
-	//}
 	beaverFlag = cli.StringFlag{
 		Name:  "beaver",
 		Usage: "auth beaver token",
@@ -47,8 +43,7 @@ var commandStart = cli.Command{
 	Name:  "start",
 	Usage: "start twitter oracle",
 	Flags: []cli.Flag{
-		portFlag,
-		beaverFlag,
+		//beaverFlag,
 	},
 	Action: Start,
 }
@@ -70,20 +65,7 @@ func main() {
 }
 
 func Start(ctx *cli.Context) {
-	//load setups
-	//port := ""
-	//if ctx.IsSet(portFlag.Name) {
-	//	port = ctx.String(portFlag.Name)
-	//} else {
-	//	panic("port unset")
-	//}
-
-	if ctx.IsSet(beaverFlag.Name) {
-		common.BeaverToken = ctx.String(beaverFlag.Name)
-	} else {
-		panic("beaver token unset")
-	}
-
+	common.BeaverToken = os.Getenv("TW_BEAVER")
 	//init and start services
 	dbt, err := db.Init()
 	if err != nil {
@@ -95,7 +77,7 @@ func Start(ctx *cli.Context) {
 	if err != nil {
 		panic(err)
 	}
-	sub.AddDefaultHanler(stream.LoadThoughtHandler)
+	sub.AddDefaultHanler(sub.LoadThoughtHandler)
 	err = sub.Start(context.Background())
 	if err != nil {
 		panic(err)
@@ -107,7 +89,7 @@ func Start(ctx *cli.Context) {
 	//if err != nil {
 	//	panic(err)
 	//}
-	log.Info("rest api started")
+	//log.Info("rest api started")
 	waitToExit()
 }
 

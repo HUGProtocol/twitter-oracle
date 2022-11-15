@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/ethereum/go-ethereum v1.10.20
-	github.com/g8rswimmer/go-twitter/v2 v2.1.1
+	github.com/g8rswimmer/go-twitter/v2 v2.1.4
 	github.com/gorilla/mux v1.8.0
 	github.com/jackc/pgx/v5 v5.0.4
 	gopkg.in/urfave/cli.v1 v1.20.0
