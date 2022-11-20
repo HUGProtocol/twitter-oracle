@@ -36,9 +36,9 @@ func (db *DBService) PutThought(author, content, sourceUrl, tips string) error {
 		return err
 	}
 	//insert thought
-	putThoughtSql := "insert into thoughts(content, address, source_url, submit_state, tips) values ($1, $2, $3, $4, $5)"
+	putThoughtSql := "insert into thoughts(content, address, source_url, submit_state, tips, thought_type, viewed) values ($1, $2, $3, $4, $5, $6, $7)"
 	//sourceUrl example: https://twitter.com/ninox2022/status/1587630498012332032
-	_, err = db.pool.Exec(ctx, putThoughtSql, content, address, sourceUrl, "save", tips)
+	_, err = db.pool.Exec(ctx, putThoughtSql, content, address, sourceUrl, "save", tips, "twitter", "all")
 	return err
 }
 

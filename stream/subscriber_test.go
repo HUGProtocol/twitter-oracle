@@ -111,3 +111,29 @@ func TestGetTweetConversation(t *testing.T) {
 	tweet := tweetResponse.Raw.Tweets[0]
 	DummyHandler(nil, tweet.ID, tweet.ConversationID, tweet.AuthorID, "mask", time.Now(), tweet.Text)
 }
+
+func TestEventTweet(t *testing.T) {
+	sub := Subscriber{
+		conversationHandler: make(map[string]Handler),
+		BeaverToken:         tokenStr,
+		client:              nil,
+		stream:              nil,
+		defaultHandler:      DummyHandler,
+	}
+	sub.newClient()
+	raw, err := sub.GetEventTwitterId(context.Background(), "1592355565187235840")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("load %v tweets\n", len(raw.Tweets))
+	for _, tweet := range raw.Tweets {
+		createTime, err := time.Parse(time.RFC3339, tweet.CreatedAt)
+		if err != nil {
+			createTime = time.Now()
+		}
+		err = DummyHandler(nil, tweet.ID, tweet.ConversationID, tweet.AuthorID, "mask", createTime, tweet.Text)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}

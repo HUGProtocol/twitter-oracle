@@ -120,7 +120,6 @@ func (q *Querier) GetEventTwitterId(ctx context.Context, eventName string, from 
 	if err != nil {
 		return common.EventTweetInfo{}, err
 	}
-
 	dictionaries := tweetResponse.Raw.TweetDictionaries()
 	latestTime, _ := time.Parse(time.RFC3339, "2022-07-11T05:37:44+00:00")
 	info := common.EventTweetInfo{TweetId: "0"}
