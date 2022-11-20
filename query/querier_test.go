@@ -3,12 +3,14 @@ package query
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 )
 
+var tokenStr = os.Getenv("TW_BEAVER")
+
 func TestQuerier_GetEventTwitterId(t *testing.T) {
-	tokenStr := "AAAAAAAAAAAAAAAAAAAAAK%2FqeQEAAAAAx0whFAoIkeSsxfoXKdTN0SQn93w%3DI0snjdgGv0VEwbn5q3xLSiY7MAuU13jbxo3Q0RV7pbrtnv0sfB"
 	querier := Querier{
 		BeaverToken:            tokenStr,
 		HUGTwitterName:         "HUG",
@@ -22,7 +24,6 @@ func TestQuerier_GetEventTwitterId(t *testing.T) {
 }
 
 func TestGetPublicMetric(t *testing.T) {
-	tokenStr := "AAAAAAAAAAAAAAAAAAAAAK%2FqeQEAAAAAx0whFAoIkeSsxfoXKdTN0SQn93w%3DI0snjdgGv0VEwbn5q3xLSiY7MAuU13jbxo3Q0RV7pbrtnv0sfB"
 	querier := Querier{
 		BeaverToken:            tokenStr,
 		HUGTwitterName:         "HUG",

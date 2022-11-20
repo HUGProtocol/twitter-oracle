@@ -102,7 +102,7 @@ var Log *Logger
 
 func init() {
 	//Default print to console
-	InitLog(LogLevel, PATH, Stdout)
+	InitLog(LogLevel, Stdout)
 }
 
 func LevelName(level int) string {

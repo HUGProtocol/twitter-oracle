@@ -15,6 +15,8 @@ import (
 
 var MAX_TIPS_LEN = 50
 
+var EventFilter = "@ninox2022 #thought"
+
 type Handler func(db *db.DBService, id string, conversation string, authorId string, authorName string, createTime time.Time, text string) error
 
 //By Default add text as reply to conversation in db
@@ -145,6 +147,7 @@ func (s *Subscriber) reconnect(ctx context.Context) error {
 				fmt.Printf("tweet sample callout error: %v\n", err)
 				continue
 			} else {
+				fmt.Println("reconnect success")
 				return nil
 			}
 		case <-timeout.C:
@@ -163,7 +166,7 @@ func (s *Subscriber) Start(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-
+	fmt.Println("start streaming")
 	defer s.stream.Close()
 	ticker := time.NewTicker(time.Second)
 	for {
@@ -299,4 +302,47 @@ func (s *Subscriber) LoadThoughtHandler(db *db.DBService, id string, conversatio
 		sourceUrl = fmt.Sprintf("https://twitter.com/%s/status/%s", conversationAuthor, conversation)
 	}
 	return db.PutThought(authorName, text, sourceUrl, tips)
+}
+
+func (q *Subscriber) GetEventTwitterId(ctx context.Context, sinceId string) (*twitter.TweetRaw, error) {
+	opts := twitter.TweetRecentSearchOpts{
+		Expansions:  []twitter.Expansion{twitter.ExpansionAuthorID},
+		TweetFields: []twitter.TweetField{twitter.TweetFieldCreatedAt, twitter.TweetFieldConversationID},
+		SinceID:     sinceId,
+	}
+	query := fmt.Sprintf(EventFilter)
+	tweetResponse, err := q.client.TweetRecentSearch(ctx, query, opts)
+	if err != nil {
+		return nil, err
+	}
+	if tweetResponse.Raw == nil {
+		return nil, errors.New("response tweet raw nil")
+	}
+	return tweetResponse.Raw, nil
+	//dictionaries := tweetResponse.Raw.TweetDictionaries()
+	//latestTime, _ := time.Parse(time.RFC3339, "2022-07-11T05:37:44+00:00")
+	//info := common.EventTweetInfo{TweetId: "0"}
+	//for _, dic := range dictionaries {
+	//	createTime, e := time.Parse(time.RFC3339, dic.Tweet.CreatedAt)
+	//	if e != nil {
+	//		continue
+	//	}
+	//	if latestTime.After(createTime) {
+	//		continue
+	//	}
+	//	latestTime = createTime
+	//
+	//	info = common.EventTweetInfo{
+	//		TweetId:    dic.Tweet.ID,
+	//		AuthorId:   dic.Author.ID,
+	//		AuthorName: dic.Author.Name,
+	//		Text:       dic.Tweet.Text,
+	//		CreatedAt:  createTime,
+	//		EventName:  eventName,
+	//	}
+	//}
+	//if info.TweetId == "0" {
+	//	return info, EventTweetNotFoundError
+	//}
+	//return info, nil
 }
